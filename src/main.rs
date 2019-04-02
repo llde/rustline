@@ -49,7 +49,7 @@ fn print_usage_and_exit(exit_code: i32) {
 }
 
 fn write_left(cout: &mut RawTerminal<std::io::Stdout>, conf: &Config) -> Result<(), std::io::Error> {
-    write!(cout, "%{{{}{}{}%}} %n %{{{}{}{}%}}%{{{}%}} ",
+    write!(cout, "%{{{}{}{}%}} %n@%M %{{{}{}{}%}}%{{{}%}} ",
            color::Fg(FG_NAME),
            color::Bg(BG_NAME),
            style::Bold,
@@ -100,62 +100,69 @@ fn write_left(cout: &mut RawTerminal<std::io::Stdout>, conf: &Config) -> Result<
 }
 
 fn write_right(cout: &mut RawTerminal<std::io::Stdout>, conf: &Config) -> Result<(), std::io::Error> {
-    let dir = env::current_dir().unwrap();
+    let dir1= env::current_dir();
+    match dir1{
+        Ok(dir) => {
+            match Repository::discover(dir) {
+                Ok(repo) => {
+                    match repo.head() {
+                        Ok(reference) => {
+                            let reference = reference;
+                            let reference = match reference.shorthand() {
+                                Some(name) => {
+                                    name
+                                },
+                                None => {
+                                    "##missing##"
+                                },
+                            };
 
-    match Repository::discover(dir) {
-        Ok(repo) => {
-            match repo.head() {
-                Ok(reference) => {
-                    let reference = reference;
-                    let reference = match reference.shorthand() {
-                        Some(name) => {
-                            name
+
+                            write!(cout, "%{{{}{}%}}%{{{}{}%}}  {}",
+                                style::Reset,
+                                color::Fg(color::LightBlack),
+                                color::Fg(color::White),
+                                color::Bg(color::LightBlack),
+                                reference,
+                            )?;
+
+                            if conf.flag_last_pipe_status == "0" {
+                                write!(cout, " ")?;
+                            }
+
+                            let status = match repo.state() {
+                                RepositoryState::Clean => None,
+                                RepositoryState::Merge => Some("Merge "),
+                                RepositoryState::Revert => Some("Revert "),
+                                RepositoryState::CherryPick => Some("CherryPick "),
+                                RepositoryState::Bisect => Some("Bisect "),
+                                RepositoryState::Rebase => Some("Rebase "),
+                                RepositoryState::RebaseInteractive => Some("RebaseInteractive "),
+                                RepositoryState::RebaseMerge => Some("RebaseMerge "),
+                                RepositoryState::ApplyMailbox => Some("ApplyMailbox "),
+                                RepositoryState::ApplyMailboxOrRebase => Some("ApplyMailboxOrRebase "),
+                                RepositoryState::RevertSequence => Some("RevertSequence "),
+                                RepositoryState::CherryPickSequence => Some("CherryPickSequence "),
+                            };
+
+                            if let Some(status_message) = status {
+                                write!(cout, "%{{{}%}}{}",
+                                    color::Fg(color::Yellow),
+                                    status_message,
+                                )?;
+                            }
                         },
-                        None => {
-                            "##missing##"
-                        },
+                        Err(_) => {},
                     };
-
-
-                    write!(cout, "%{{{}{}%}}%{{{}{}%}}  {}",
-                           style::Reset,
-                           color::Fg(color::LightBlack),
-                           color::Fg(color::White),
-                           color::Bg(color::LightBlack),
-                           reference,
-                    )?;
-
-                    if conf.flag_last_pipe_status == "0" {
-                        write!(cout, " ")?;
-                    }
-
-                    let status = match repo.state() {
-                        RepositoryState::Clean => None,
-                        RepositoryState::Merge => Some("Merge "),
-                        RepositoryState::Revert => Some("Revert "),
-                        RepositoryState::CherryPick => Some("CherryPick "),
-                        RepositoryState::Bisect => Some("Bisect "),
-                        RepositoryState::Rebase => Some("Rebase "),
-                        RepositoryState::RebaseInteractive => Some("RebaseInteractive "),
-                        RepositoryState::RebaseMerge => Some("RebaseMerge "),
-                        RepositoryState::ApplyMailbox => Some("ApplyMailbox "),
-                        RepositoryState::ApplyMailboxOrRebase => Some("ApplyMailboxOrRebase "),
-                        RepositoryState::RevertSequence => Some("RevertSequence "),
-                        RepositoryState::CherryPickSequence => Some("CherryPickSequence "),
-                    };
-
-                    if let Some(status_message) = status {
-                        write!(cout, "%{{{}%}}{}",
-                               color::Fg(color::Yellow),
-                               status_message,
-                        )?;
-                    }
                 },
                 Err(_) => {},
-            };
-        },
-        Err(_) => {},
-    };
+            };       
+        }
+        Err(_) => {
+            write!(cout, "%{{{}{}%}}%{{{}{}%}}Deleted folder", style::Reset,color::Fg(color::White) , color::Fg(color::Red),color::Bg(color::White))?;
+        }
+    }
+
 
     if conf.flag_last_pipe_status != "0" {
 
