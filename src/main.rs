@@ -126,9 +126,9 @@ fn write_right(cout: &mut RawTerminal<std::io::Stdout>, conf: &Config) -> Result
                                 reference,
                             )?;
 
-                            if conf.flag_last_pipe_status == "0" {
-                                write!(cout, " ")?;
-                            }
+                           // if conf.flag_last_pipe_status == "0" {
+                            //    write!(cout, " ")?;
+                           // }
 
                             let status = match repo.state() {
                                 RepositoryState::Clean => None,
@@ -163,16 +163,25 @@ fn write_right(cout: &mut RawTerminal<std::io::Stdout>, conf: &Config) -> Result
         }
     }
 
-
-    if conf.flag_last_pipe_status != "0" {
-
+    
+    let split_pipe = conf.flag_last_pipe_status.split('\u{e0b3}');
+    let mut does = false; 
+    for val in split_pipe {
+        if val.trim() != "0" {
+            does = true;
+            break
+        }
+    }
+    if does == true{
         write!(cout, "%{{{}%}} %{{{}{}%}} {} ",
                color::Fg(color::Red),
                color::Fg(color::White),
                color::Bg(color::Red),
                conf.flag_last_pipe_status,
         )?;
-
+    }
+    else{
+        write!(cout, " ")?;
     }
 
     Ok(())
